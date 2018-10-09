@@ -210,6 +210,7 @@ fork(int tickets)
     np->tickets = tickets;
   }
 
+  np->stride = 0;
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
