@@ -50,7 +50,8 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int tickets;                 // number of tickets
-  int stride;                  //numero do passo
+  int stride;                  // numero do passo
+  int stride_increment;        // variavel para incrementar valor do passo
 };
 
 // Process memory is laid out contiguously, low addresses first:
