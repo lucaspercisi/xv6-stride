@@ -210,8 +210,11 @@ fork(int tickets)
     np->tickets = tickets;
   }
 
+  //CONFIGURAÇÕES INICIAS DOS PASSOS
   np->stride = (int)(STRIDE_CONST/np->tickets);
   np->stride_increment = 0;
+  //-------------------------------------------
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
