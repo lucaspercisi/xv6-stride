@@ -367,23 +367,25 @@ int total_occurrences(int *occurrences){
 void scheduler(void){
 
   struct proc *p;
+  struct proc *m;
+  struct proc *e = ptable.proc;
   struct cpu *c = mycpu();
   int count = 0;
   long golden_ticket = 0;
   int total_no_tickets = 0;
   int occurrences[NPROC];
 
-    for (int i = 0; i < NPROC; i++) {
-        occurrences[i] = 0;
-    }
+  for (int i = 0; i < NPROC; i++) {
+      occurrences[i] = 0;
+  }
 
   c->proc = 0;
 
-    int d = 0;
-    total_no_tickets = tickets_total();
-    golden_ticket = random_at_most(ticks);
+  int d = 0;
+  total_no_tickets = tickets_total();
+  golden_ticket = random_at_most(ticks);
 
-  for(;;){
+  for(;;) {
 
       // Enable interrupts on this processor.
       sti();
@@ -399,26 +401,39 @@ void scheduler(void){
 
       total_no_tickets = tickets_total();  //Soma total de bilhetes do sistemas
       golden_ticket = random_at_most(total_no_tickets);  // ticket sorteado randômicamente;
+      golden_ticket++;
 
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 
-          if(p->state != RUNNABLE){
+          if (p->state != RUNNABLE) {
               count += p->tickets; //Soma count mesmo não sendo runnable
               continue;
           }
 
-          if (golden_ticket < count || golden_ticket > (count + p->tickets)){
-            count += p->tickets; //Soma count mesmo não sendo runnable
-            continue;
+//          if(p->pid < 2) continue;
+
+          if(p->stride_increment == 0) p->stride_increment += p->stride;
+
+          for (m = ptable.proc; m < &ptable.proc[NPROC]; m++) {
+
+              if (m->state != RUNNABLE) continue;
+              if (p->stride_increment >= m->stride_increment) continue;
+              else if (p->stride_increment < m->stride_increment) e = p;
+
           }
 
+
+          p = e;
+          p->stride_increment += p->stride;
+
+          cprintf("Executou %d %d %d %d\n", p->pid, e->pid, p->stride_increment, p->stride);
           // Aqui o processo foi escolhido para rodar
 
           //EXIBE INFORMAÇÃO DOS PROCESSOS
           occurrences[p->pid]++;  // Incrementa quantidade de ocorrências por processo
-          if(d % 100 == 0){
-              procdump(occurrences);
-              cprintf("\n");
+          if (d % 100 == 0) {
+//              procdump(occurrences);
+//              cprintf("\n");
           }
 
           // Mudança de contexto e estado.
@@ -433,11 +448,12 @@ void scheduler(void){
           c->proc = 0;
           break;
 
-    }
+      }
 
     release(&ptable.lock);
   }
 }
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
