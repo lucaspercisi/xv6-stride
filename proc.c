@@ -422,7 +422,7 @@ void scheduler(void){
 
           // AQUI O PROCESSO P FOI ESCOLHIDO
 
-          //#TODO: Fazer proteção do estouro do p->stride_increment
+          //#TODO: Verificar se a proteção do estouro funciona
           if((p->stride_increment += p->stride) > INT_MAX) overFlowStride();
 
           p->stride_increment += p->stride; //incrementa o passo
