@@ -5,6 +5,8 @@ https://01siddharth.blogspot.com/2018/04/adding-system-call-in-xv6-os.html
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "param.h"
+
 
 #define QTD_PROC    10
 

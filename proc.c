@@ -211,7 +211,8 @@ fork(int tickets)
   }
 
   //CONFIGURAÇÕES INICIAS DOS PASSOS
-  np->stride = (int)(STRIDE_CONST/np->tickets);
+  if(np->tickets > 0) np->stride = (int)(STRIDE_CONST/np->tickets);
+  else np->stride = 0;
   np->stride_increment = 0;
   //-------------------------------------------
 
@@ -355,6 +356,19 @@ int total_occurrences(int *occurrences){
     return total;
 }
 
+// TODO: Melhorar método de busca.
+int isSmaller(int stride){
+
+    struct proc *p;
+
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if (p->state != RUNNABLE) continue;
+        if (stride > p->stride_increment) return 0;
+    }
+
+    return 1;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -367,23 +381,16 @@ int total_occurrences(int *occurrences){
 void scheduler(void){
 
   struct proc *p;
-  struct proc *m;
-  struct proc *e = ptable.proc;
   struct cpu *c = mycpu();
-  int count = 0;
-  long golden_ticket = 0;
-  int total_no_tickets = 0;
-  int occurrences[NPROC];
 
+  // Para exibir estatísticas
+  int occurrences[NPROC];
   for (int i = 0; i < NPROC; i++) {
       occurrences[i] = 0;
   }
+  int d = 0; //contador para ocorrências
 
   c->proc = 0;
-
-  int d = 0;
-  total_no_tickets = tickets_total();
-  golden_ticket = random_at_most(ticks);
 
   for(;;) {
 
@@ -392,48 +399,27 @@ void scheduler(void){
 
       // Loop over process table looking for process to run.
       acquire(&ptable.lock);
-      // reset the variables every raffle
-      golden_ticket = 0;
-      count = 0;
-      total_no_tickets = 0;
-      d++;
-      // calculate tickets total for runnable processes
 
-      total_no_tickets = tickets_total();  //Soma total de bilhetes do sistemas
-      golden_ticket = random_at_most(total_no_tickets);  // ticket sorteado randômicamente;
-      golden_ticket++;
+      //para estatísticas
+      d++;
 
       for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 
-          if (p->state != RUNNABLE) {
-              count += p->tickets; //Soma count mesmo não sendo runnable
-              continue;
-          }
+          if (p->state != RUNNABLE) continue;
 
-//          if(p->pid < 2) continue;
+          if(!isSmaller(p->stride_increment)) continue;
 
-          if(p->stride_increment == 0) p->stride_increment += p->stride;
+          // AQUI O PROCESSO P FOI ESCOLHIDO
 
-          for (m = ptable.proc; m < &ptable.proc[NPROC]; m++) {
+          //#TODO: Fazer proteção do estouro do p->stride_increment
 
-              if (m->state != RUNNABLE) continue;
-              if (p->stride_increment >= m->stride_increment) continue;
-              else if (p->stride_increment < m->stride_increment) e = p;
-
-          }
-
-
-          p = e;
-          p->stride_increment += p->stride;
-
-          cprintf("Executou %d %d %d %d\n", p->pid, e->pid, p->stride_increment, p->stride);
-          // Aqui o processo foi escolhido para rodar
+          p->stride_increment += p->stride; //incrementa o passo
 
           //EXIBE INFORMAÇÃO DOS PROCESSOS
           occurrences[p->pid]++;  // Incrementa quantidade de ocorrências por processo
           if (d % 100 == 0) {
-//              procdump(occurrences);
-//              cprintf("\n");
+              procdump(occurrences);
+              cprintf("\n");
           }
 
           // Mudança de contexto e estado.
@@ -618,7 +604,7 @@ procdump(int *occurrences)
 
 
 
-  cprintf("PID\t| NAME\t\t| STATE   \t| QTD_T\t| OC\t| PROC\t| ESTI\t|\n");
+  cprintf("PID\t| NAME\t\t| STATE   \t| QTD_T\t| OC\t| PROC\t| ESTI\t| STD\t| STD_I\t\t|\n");
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 
       if(p->state == UNUSED)
@@ -631,10 +617,11 @@ procdump(int *occurrences)
 
 
       // ESTATÍSTICAS DOS PROCESSOS
-      cprintf("%d\t| %s     \t| %s   \t| %d\t|%d\t| %d%\t| %d%\t|", \
+      cprintf("%d\t| %s     \t| %s   \t| %d\t|%d\t| %d%\t| %d%\t| %d\t| %d\t\t|", \
               p->pid, p->name, state, p->tickets, occurrences[p->pid],\
               (int)(((float)occurrences[p->pid]/total_occurrences(occurrences))*100), \
-              (int)(((float)p->tickets/tickets_total())*100)); //PORCENTAGEM ESTIMADA
+              (int)(((float)p->tickets/tickets_total())*100), \
+              p->stride, p->stride_increment);
       //----------------------------------------------
 
 

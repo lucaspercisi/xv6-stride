@@ -23,7 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int lottery(void);
+int stride(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

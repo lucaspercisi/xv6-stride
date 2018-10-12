@@ -94,7 +94,7 @@ sys_uptime(void)
   return xticks;
 }
 
-int sys_lottery(void)
+int sys_stride(void)
 {
   int n;
 
