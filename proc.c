@@ -369,6 +369,17 @@ int isSmaller(int stride){
     return 1;
 }
 
+//Reinicialização dos passos.
+void overFlowStride(){
+
+    struct proc *p;
+
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        p->stride_increment = p->stride;
+    }
+
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -412,6 +423,7 @@ void scheduler(void){
           // AQUI O PROCESSO P FOI ESCOLHIDO
 
           //#TODO: Fazer proteção do estouro do p->stride_increment
+          if((p->stride_increment += p->stride) > INT_MAX) overFlowStride();
 
           p->stride_increment += p->stride; //incrementa o passo
 

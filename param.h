@@ -14,3 +14,4 @@
 #define NTICKETS     (NPROC/NCPU) // default per-process tickets
 #define MAXTICKETS   (NTICKETS*NTICKETS) // default max per-process tickets
 #define STRIDE_CONST (MAXTICKETS*10)
+#define INT_MAX      2147483647
