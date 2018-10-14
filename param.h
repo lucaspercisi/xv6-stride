@@ -13,5 +13,7 @@
 #define FSSIZE       1000  // size of file system in blocks
 #define NTICKETS     (NPROC/NCPU) // default per-process tickets
 #define MAXTICKETS   (NTICKETS*NTICKETS) // default max per-process tickets
+//Constante de passo relacionada ao máximo de tickets
 #define STRIDE_CONST (MAXTICKETS*10)
-#define INT_MAX      2147483647
+//INT_MAX com margem de erro de 2 x o maior passo poassível
+#define INT_MAX      (2147483647 - (STRIDE_CONST * 2))

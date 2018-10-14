@@ -370,7 +370,7 @@ int isSmaller(int stride){
 }
 
 //Reinicialização dos passos.
-void overFlowStride(){
+void overFlowStride(int *occurrences){
 
     struct proc *p;
 
@@ -418,12 +418,13 @@ void scheduler(void){
 
           if (p->state != RUNNABLE) continue;
 
-          if(!isSmaller(p->stride_increment)) continue;
+          if (!isSmaller(p->stride_increment)) continue;
 
           // AQUI O PROCESSO P FOI ESCOLHIDO
 
-          //#TODO: Verificar se a proteção do estouro funciona
-          if((p->stride_increment += p->stride) > INT_MAX) overFlowStride();
+          //Proteção do estouro do estouro do passo
+          if (p->stride_increment >= INT_MAX) overFlowStride(occurrences);
+          if (p->stride_increment < 0) overFlowStride(occurrences);
 
           p->stride_increment += p->stride; //incrementa o passo
 
@@ -614,9 +615,7 @@ procdump(int *occurrences)
   char *state;
   uint pc[10];
 
-
-
-  cprintf("PID\t| NAME\t\t| STATE   \t| QTD_T\t| OC\t| PROC\t| ESTI\t| STD\t| STD_I\t\t|\n");
+  cprintf("PID\t| NAME\t\t| STATE   \t| QTD_T\t| OC\t| PROC\t| ESTI\t| STD\t| STD_I\t|\n");
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 
       if(p->state == UNUSED)
@@ -627,9 +626,8 @@ procdump(int *occurrences)
       else
         state = "???";
 
-
       // ESTATÍSTICAS DOS PROCESSOS
-      cprintf("%d\t| %s     \t| %s   \t| %d\t|%d\t| %d%\t| %d%\t| %d\t| %d\t\t|", \
+      cprintf("%d\t| %s     \t| %s   \t| %d\t|%d\t| %d%\t| %d%\t| %d\t| %d\t|", \
               p->pid, p->name, state, p->tickets, occurrences[p->pid],\
               (int)(((float)occurrences[p->pid]/total_occurrences(occurrences))*100), \
               (int)(((float)p->tickets/tickets_total())*100), \
