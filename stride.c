@@ -20,7 +20,7 @@ int main() {
     }
 
     //Bug: Se não criar  este processo o último do laço fica sempre como zombie.
-    process_test(1); // Para não bugar.
+    process_test(1); // Para não deixa o ultimo do laço como zombie.
 
     exit();
 }

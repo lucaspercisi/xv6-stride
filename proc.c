@@ -345,6 +345,18 @@ int tickets_total(void){
   return total;
 }
 
+//Reinicialização dos passos.
+void overFlowStride(int *occurrences){
+
+    struct proc *p;
+
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        p->stride_increment = p->stride;
+    }
+
+}
+
+
 // Somátorio de ocorrencia para gerar porcentagens.
 int total_occurrences(int *occurrences){
 
@@ -356,28 +368,26 @@ int total_occurrences(int *occurrences){
     return total;
 }
 
-// TODO: Melhorar método de busca.
-int isSmaller(int stride){
+//busca o processo com menor passo sem ordenanmento da tabela de processos
+int find_small_pid(){
 
     struct proc *p;
+    int small_stride_pid = 0;
+    int small_stride = INT_MAX;
 
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
         if (p->state != RUNNABLE) continue;
-        if (stride > p->stride_increment) return 0;
+
+        if (p->stride_increment < small_stride){
+            small_stride = p->stride_increment;
+            small_stride_pid = p->pid;
+        }
+
+        if (p->pid == 0) break; //olha só para os processos alocados
     }
 
-    return 1;
-}
-
-//Reinicialização dos passos.
-void overFlowStride(int *occurrences){
-
-    struct proc *p;
-
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        p->stride_increment = p->stride;
-    }
-
+    return small_stride_pid;
 }
 
 //PAGEBREAK: 42
@@ -391,69 +401,72 @@ void overFlowStride(int *occurrences){
 
 void scheduler(void){
 
-  struct proc *p;
-  struct cpu *c = mycpu();
+    struct proc *p;
+    struct cpu *c = mycpu();
+    int dump_count = 0; //contador para ocorrências
 
-  // Para exibir estatísticas
-  int occurrences[NPROC];
-  for (int i = 0; i < NPROC; i++) {
-      occurrences[i] = 0;
-  }
-  int d = 0; //contador para ocorrências
+    // Para exibir estatísticas
+    int occurrences[NPROC];
+    for (int i = 0; i < NPROC; i++) occurrences[i] = 0;
 
-  c->proc = 0;
+    c->proc = 0;
 
-  for(;;) {
+    for(;;) {
 
-      // Enable interrupts on this processor.
-      sti();
+        sti();  // Enable interrupts on this processor.
+        dump_count++;  // Para estatísticas
+        int small_stride_pid = find_small_pid();  // Encontra o pid com menor passo
+        acquire(&ptable.lock); // Loop over process table looking for process to run.
 
-      // Loop over process table looking for process to run.
-      acquire(&ptable.lock);
+        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 
-      //para estatísticas
-      d++;
+            if (p->state != RUNNABLE) continue;
 
-      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+            /* O comando abaixo atribui a p o processo que deve ser executado.
+             * Devido alguns bugs foi decidido manter a busca linear.
+             *
+             * Pela busca linear, o tempo de decisão do processo,
+             * no pior caso é 2 * n, sendo n a quantidade processos alocados.
+             *
+             * Pela execução direta, o tempo de decisão do processo,
+             * no pior caso é n, sendo n a quantidade de processos alocados.
+             */
 
-          if (p->state != RUNNABLE) continue;
+//            p = &ptable.proc[small_stride_pid == 0 ? 0 : small_stride_pid - 1];
+            if (p->pid != small_stride_pid) continue;
 
-          if (!isSmaller(p->stride_increment)) continue;
+            // Processo foi escolhido.
 
-          // AQUI O PROCESSO P FOI ESCOLHIDO
+            // Proteção do estouro do estouro do passo
+            if (p->stride_increment >= INT_MAX) overFlowStride(occurrences);
+            if (p->stride_increment < 0) overFlowStride(occurrences);
 
-          //Proteção do estouro do estouro do passo
-          if (p->stride_increment >= INT_MAX) overFlowStride(occurrences);
-          if (p->stride_increment < 0) overFlowStride(occurrences);
+            p->stride_increment += p->stride; //incrementa o passo
 
-          p->stride_increment += p->stride; //incrementa o passo
+            //EXIBE INFORMAÇÃO DOS PROCESSOS
+            occurrences[p->pid]++;  // Incrementa quantidade de ocorrências por processo
+            if (dump_count % 100 == 0) {
+                procdump(occurrences);
+                cprintf("\n");
+            }
 
-          //EXIBE INFORMAÇÃO DOS PROCESSOS
-          occurrences[p->pid]++;  // Incrementa quantidade de ocorrências por processo
-          if (d % 100 == 0) {
-              procdump(occurrences);
-              cprintf("\n");
-          }
+            // Mudança de contexto e estado.
+            c->proc = p;
+            switchuvm(p);
+            p->state = RUNNING;
+            swtch(&(c->scheduler), p->context);
+            switchkvm();
 
-          // Mudança de contexto e estado.
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c->proc = 0;
+            break;
 
-          // Process is done running for now.
-          // It should have changed its p->state before coming back.
-          c->proc = 0;
-          break;
+        }
 
-      }
-
-    release(&ptable.lock);
-  }
+        release(&ptable.lock);
+    }
 }
-
-
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -644,4 +657,6 @@ procdump(int *occurrences)
 
     cprintf("\n");
   }
+
+  cprintf("\n");
 }
