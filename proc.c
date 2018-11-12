@@ -415,15 +415,16 @@ void scheduler(void){
 
         sti();  // Enable interrupts on this processor.
         dump_count++;  // Para estatísticas
-        int small_stride_pid = find_small_pid();  // Encontra o pid com menor passo
         acquire(&ptable.lock); // Loop over process table looking for process to run.
+        int small_stride_pid = find_small_pid();  // Encontra o pid com menor passo
 
         for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 
             if (p->state != RUNNABLE) continue;
 
             /* O comando abaixo atribui a p o processo que deve ser executado.
-             * Devido alguns bugs foi decidido manter a busca linear.
+             * Devido algumas excessões e problemas causados por este método
+             * foi decidido manter a busca linear.
              *
              * Pela busca linear, o tempo de decisão do processo,
              * no pior caso é 2 * n, sendo n a quantidade processos alocados.
@@ -467,6 +468,7 @@ void scheduler(void){
         release(&ptable.lock);
     }
 }
+
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
